@@ -1,72 +1,62 @@
 #!/usr/bin/env python3
 
 from argparse import ArgumentParser, FileType, RawDescriptionHelpFormatter
-import os.path
-#from symbol import argument
-import sys
 from dataclasses import dataclass
-from os.path import exists,basename
+from os.path import basename
 import csv
 from math import radians, cos
 import numpy as np
 
 
-degree_lat_in_meters = 10000000/90
-
+DEGREE_LAT_IN_METERS = 10000000/90
 
 @dataclass
 class ppk_timestamp:
-    A: str
-    B: float
-    C: str
-    D: str
-    E: str
-    F: str
-    G: str
-    H: str
-    I: str
-    J: str
-    K: str
-    PH4_Base_File: str
+    a_column: str
+    b_column: float
+    d_column: str
+    e_column: str
+    f_column: str
+    ph4_base_file: str
 
     def calculate_values(self, pos_data_float, file_index):
-        Northing_diff = float(self.D.strip().split(',')[0])
-        Easting_diff = float(self.E.strip().split(',')[0])
-        Elevation_diff = float(self.F.strip().split(',')[0])
+        northing_diff = float(self.d_column.strip().split(',', maxsplit=1)[0])
+        easting_diff = float(self.e_column.strip().split(',', maxsplit=1)[0])
+        elevation_diff = float(self.f_column.strip().split(',', maxsplit=1)[0])
 
         # Find nearest Timestamp
         for idx, line in enumerate(pos_data_float):
-            if line[1] > self.B:
+            if line[1] > self.b_column:
                 inf = pos_data_float[idx-1]
                 sup = pos_data_float[idx]
                 break
-        percent_diff_between_timestamps = (self.B - inf[1])/(sup[1]-inf[1])
-        Interpolated_Lat = (
+        percent_diff_between_timestamps = (self.b_column - inf[1])/(sup[1]-inf[1])
+        interpolated_lat = (
             inf[2]*(1-percent_diff_between_timestamps)+sup[2]*percent_diff_between_timestamps)
-        Interpolated_Lon = (
+        interpolated_lon = (
             inf[3]*(1-percent_diff_between_timestamps)+sup[3]*percent_diff_between_timestamps)
-        Interpolated_Alti = (
+        interpolated_alti = (
             inf[4]*(1-percent_diff_between_timestamps)+sup[4]*percent_diff_between_timestamps)
 
-        degree_lon_in_meters = degree_lat_in_meters*cos(radians(inf[2]))
+        degree_lon_in_meters = DEGREE_LAT_IN_METERS*cos(radians(inf[2]))
 
-        Lat_Diff_deg = Northing_diff / 1000 / degree_lat_in_meters
-        Lon_Diff_deg = Easting_diff / 1000 / degree_lon_in_meters
-        Alti_Diff = Elevation_diff / 1000
+        lat_diff_deg = northing_diff / 1000 / DEGREE_LAT_IN_METERS
+        lon_diff_deg = easting_diff / 1000 / degree_lon_in_meters
+        alti_diff = elevation_diff / 1000
 
-        new_lat = Interpolated_Lat + Lat_Diff_deg
-        new_lon = Interpolated_Lon + Lon_Diff_deg
-        new_alt = Interpolated_Alti - Alti_Diff
-        print(f'{self.PH4_Base_File}_{file_index:0>4}.JPG\t{new_lat}\t{new_lon}\t{new_alt}')
-        return f'{self.PH4_Base_File}_{file_index:0>4}.JPG\t{new_lat}\t{new_lon}\t{new_alt}\n'
+        new_lat = interpolated_lat + lat_diff_deg
+        new_lon = interpolated_lon + lon_diff_deg
+        new_alt = interpolated_alti - alti_diff
+        print(f'{self.ph4_base_file}_{file_index:0>4}.JPG\t{new_lat}\t{new_lon}\t{new_alt}')
+        return f'{self.ph4_base_file}_{file_index:0>4}.JPG\t{new_lat}\t{new_lon}\t{new_alt}\n'
 
 @dataclass
-class RinexToPPK:
-    """Import calculated RINEX from PH4RTK with images adte and find accurate PPK positions"""
+class RinexToPpk:
+    """Import calculated RINEX from PH4RTK with images date and find accurate PPK positions"""
     pos_ph4_rinex_file: str
-    Timestamp_file: str
+    timestamp_file: str
 
-    def calculate_PPK_positions(self):
+    def calculate_ppk_positions(self):
 
         #        __import__("IPython").embed()
         #        sys.exit()
@@ -79,26 +69,24 @@ class RinexToPPK:
 
             pos_data = list(csv.reader(rinex_file, delimiter=','))
             pos_data_float = np.asfarray(pos_data, dtype=float)
-        
+
         rinex_file.close()
 
         #posrows = sum(1 for line in open(self.pos_ph4_rinex_file)) - 2
         #timerows = sum(1 for line in open(self.Timestamp_file))
 
         # print(f'posrows {posrows} timerows {timerows}')
-        
-        PH4_part_A,PH4_part_B,_ = basename(self.Timestamp_file.name).split('_')
 
-        PH4_Base_File=f'{PH4_part_A}_{PH4_part_B}'
+        ph4_part_a,ph4_part_b,_ = basename(self.timestamp_file.name).split('_')
+
+        ph4_base_file=f'{ph4_part_a}_{ph4_part_b}'
         file_index = 1
-        with open(f'{PH4_part_A}_{PH4_part_B}_PPK.csv','w') as output_csv:
+        with open(f'{ph4_part_a}_{ph4_part_b}_PPK.csv','w',encoding="UTF_8") as output_csv:
             output_csv.write("EPSG:4326\n")
-            with self.Timestamp_file as timestamp_file:
+            with self.timestamp_file as timestamp_file:
                 for line in timestamp_file:
-                    # print(line.strip())
-                    # ppk_timestamp(line.split('\t')).calculate_values()
-                    A, B, C, D, E, F, G, H, I, J, K = line.split('\t')
-                    result = ppk_timestamp(A, float(B), C, D, E, F, G, H, I, J, K,PH4_Base_File).calculate_values(pos_data_float, file_index)
+                    a_column, b_column, _, d_column, e_column, f_column, _, _, _, _, _ = line.split('\t')
+                    result = ppk_timestamp(a_column, float(b_column), d_column, e_column, f_column, ph4_base_file).calculate_values(pos_data_float, file_index)
                     output_csv.write(result)
                     file_index = file_index+1
             timestamp_file.close()
@@ -112,12 +100,12 @@ def parse_arguments():
         ''')
 
     parser.add_argument(
-        '--input_rinex', '-r', type=FileType('r'), 
+        '--input_rinex', '-r', type=FileType('r'),
         metavar='PATH',required=True,
         help="Rinex input file from RTKPOST.")
 
     parser.add_argument(
-        '--input_timestamp', '-t', type=FileType('r'), 
+        '--input_timestamp', '-t', type=FileType('r'),
         metavar='PATH',required=True,
         help="Timestamp input file from PH4TK Sdcard.")
     # parser.add_argument(
@@ -139,10 +127,8 @@ def main():
     arguments=parse_arguments()
     args=arguments.parse_args()
 
-
-
-    RinextoPPK = RinexToPPK(args.input_rinex , args.input_timestamp)
-    RinextoPPK.calculate_PPK_positions()
+    rinextoppk = RinexToPpk(args.input_rinex , args.input_timestamp)
+    rinextoppk.calculate_ppk_positions()
 
 
 if __name__ == "__main__":
