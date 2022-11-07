@@ -58,7 +58,7 @@ class ppk_timestamp:
         new_lon = Interpolated_Lon + Lon_Diff_deg
         new_alt = Interpolated_Alti - Alti_Diff
         print(f'{self.PH4_Base_File}_{file_index:0>4}.JPG\t{new_lat}\t{new_lon}\t{new_alt}')
-
+        return f'{self.PH4_Base_File}_{file_index:0>4}.JPG\t{new_lat}\t{new_lon}\t{new_alt}\n'
 
 @dataclass
 class RinexToPPK:
@@ -71,14 +71,16 @@ class RinexToPPK:
         #        __import__("IPython").embed()
         #        sys.exit()
         #with open(self.pos_ph4_rinex_file, newline='',encoding="utf-8") as open_file:
-        with self.pos_ph4_rinex_file as open_file:
+        with self.pos_ph4_rinex_file as rinex_file:
 
             # skip headers
-            open_file.readline()
-            open_file.readline()
+            rinex_file.readline()
+            rinex_file.readline()
 
-            pos_data = list(csv.reader(open_file, delimiter=','))
+            pos_data = list(csv.reader(rinex_file, delimiter=','))
             pos_data_float = np.asfarray(pos_data, dtype=float)
+        
+        rinex_file.close()
 
         #posrows = sum(1 for line in open(self.pos_ph4_rinex_file)) - 2
         #timerows = sum(1 for line in open(self.Timestamp_file))
@@ -89,21 +91,24 @@ class RinexToPPK:
 
         PH4_Base_File=f'{PH4_part_A}_{PH4_part_B}'
         file_index = 1
-        #with open(self.Timestamp_file,encoding="utf-8") as f:
-        with self.Timestamp_file as f:
-            for line in f:
-                # print(line.strip())
-                # ppk_timestamp(line.split('\t')).calculate_values()
-                A, B, C, D, E, F, G, H, I, J, K = line.split('\t')
-                ppk_timestamp(A, float(B), C, D, E, F, G, H, I, J, K,PH4_Base_File).calculate_values(pos_data_float, file_index)
-                file_index = file_index+1
+        with open(f'{PH4_part_A}_{PH4_part_B}_PPK.csv','w') as output_csv:
+            output_csv.write("EPSG:4326\n")
+            with self.Timestamp_file as timestamp_file:
+                for line in timestamp_file:
+                    # print(line.strip())
+                    # ppk_timestamp(line.split('\t')).calculate_values()
+                    A, B, C, D, E, F, G, H, I, J, K = line.split('\t')
+                    result = ppk_timestamp(A, float(B), C, D, E, F, G, H, I, J, K,PH4_Base_File).calculate_values(pos_data_float, file_index)
+                    output_csv.write(result)
+                    file_index = file_index+1
+            timestamp_file.close()
 
 
 def parse_arguments():
     parser = ArgumentParser(prog='RinexRoPPK',
         formatter_class=RawDescriptionHelpFormatter,
         description='''Convert Rinex File form RTKPOST and Timestamp.MRK
-        to csv file 
+        to csv file for opendronemap
         ''')
 
     parser.add_argument(
@@ -134,12 +139,10 @@ def main():
     arguments=parse_arguments()
     args=arguments.parse_args()
 
-    pos_file = '../images/2022_06_mayotte/100_0138_ppk/100_0138_Rinex.pos'
-    timestamp_file = '../images/2022_06_mayotte/100_0138_ppk/100_0138_Timestamp.MRK'
-    PH4_Base_File = "100_0138"
 
-    tool = RinexToPPK(args.input_rinex , args.input_timestamp)
-    tool.calculate_PPK_positions()
+
+    RinextoPPK = RinexToPPK(args.input_rinex , args.input_timestamp)
+    RinextoPPK.calculate_PPK_positions()
 
 
 if __name__ == "__main__":
