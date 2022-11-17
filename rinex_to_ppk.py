@@ -91,7 +91,7 @@ class RinexToPpk:
 def parse_arguments():
     parser = ArgumentParser(prog='RinexRoPPK',
         formatter_class=RawDescriptionHelpFormatter,
-        description='''Convert Rinex File form RTKPOST and Timestamp.MRK
+        description='''Convert rinex file form RTKPOST and timestamp.MRK from PH4RTK
         to csv file for opendronemap
         ''')
 
@@ -103,7 +103,7 @@ def parse_arguments():
     parser.add_argument(
         '--input_timestamp', '-t', type=FileType('r'),
         metavar='PATH',required=True,
-        help="Timestamp input file from PH4TK Sdcard.\n ex: 100_0138_Timestamp.MRK")
+        help="Timestamp input file from PH4RTK Sdcard.\n ex: 100_0138_Timestamp.MRK")
 
     parser.add_argument('--odm','-o', action='store_true',
                     help='output with EPSG header for ODM')
