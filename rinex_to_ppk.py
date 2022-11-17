@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=no-member
 
 from argparse import ArgumentParser, FileType, RawDescriptionHelpFormatter
 from dataclasses import dataclass
@@ -11,7 +12,9 @@ import numpy as np
 DEGREE_LAT_IN_METERS = 10000000/90
 
 @dataclass
-class ppk_timestamp:
+class PpkTimestamp:
+    """Calculate position from ppk timestamp"""
+
     a_column: str
     b_column: float
     d_column: str
@@ -50,6 +53,7 @@ class ppk_timestamp:
         print(f'{self.ph4_base_file}_{file_index:0>4}.JPG\t{new_lat}\t{new_lon}\t{new_alt}')
         return f'{self.ph4_base_file}_{file_index:0>4}.JPG\t{new_lat}\t{new_lon}\t{new_alt}\n'
 
+
 @dataclass
 class RinexToPpk:
     """Import calculated RINEX from PH4RTK with images date and find accurate PPK positions"""
@@ -57,10 +61,9 @@ class RinexToPpk:
     timestamp_file: str
 
     def calculate_ppk_positions(self):
-
+        """Calculate position from ppk data"""
         #        __import__("IPython").embed()
         #        sys.exit()
-        #with open(self.pos_ph4_rinex_file, newline='',encoding="utf-8") as open_file:
         with self.pos_ph4_rinex_file as rinex_file:
 
             # skip headers
@@ -69,13 +72,6 @@ class RinexToPpk:
 
             pos_data = list(csv.reader(rinex_file, delimiter=','))
             pos_data_float = np.asfarray(pos_data, dtype=float)
-
-        rinex_file.close()
-
-        #posrows = sum(1 for line in open(self.pos_ph4_rinex_file)) - 2
-        #timerows = sum(1 for line in open(self.Timestamp_file))
-
-        # print(f'posrows {posrows} timerows {timerows}')
 
         ph4_part_a,ph4_part_b,_ = basename(self.timestamp_file.name).split('_')
 
@@ -86,10 +82,9 @@ class RinexToPpk:
             with self.timestamp_file as timestamp_file:
                 for line in timestamp_file:
                     a_column, b_column, _, d_column, e_column, f_column, _, _, _, _, _ = line.split('\t')
-                    result = ppk_timestamp(a_column, float(b_column), d_column, e_column, f_column, ph4_base_file).calculate_values(pos_data_float, file_index)
+                    result = PpkTimestamp(a_column, float(b_column), d_column, e_column, f_column, ph4_base_file).calculate_values(pos_data_float, file_index)
                     output_csv.write(result)
                     file_index = file_index+1
-            timestamp_file.close()
 
 
 def parse_arguments():
