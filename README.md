@@ -1,4 +1,7 @@
 Tools to calculate DJI Phantom 4 RTK (PH4RTK) PPK positions.
+> [!WARNING]
+> Offset of the antenna phase center to camera CMOS center is not yet used. Next release will use this data
+
 
 More tools will come
 
