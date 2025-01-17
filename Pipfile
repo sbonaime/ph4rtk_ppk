@@ -5,8 +5,6 @@ name = "pypi"
 
 [packages]
 numpy = "*"
-ipython = "*"
-pylibt = "*"
 
 [dev-packages]
 
