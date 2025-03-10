@@ -10,6 +10,6 @@ Tools to calculate DJI Phantom 4 RTK (PH4RTK) PPK positions.
 
 - Usage examples
  :
-```python3 rinex_to_ppk.py -r 100_0138_Rinex.pos -t 100_0138_Timestamp.MRK --odm -o ./ ```
+```python3 rinex_to_ppk.py -r /data/files/100_0001/ --odm -o ./ ```
 
 

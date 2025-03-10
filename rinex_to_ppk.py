@@ -9,6 +9,8 @@ import csv
 from math import radians, cos
 import numpy as np
 from io import StringIO
+from pathlib import Path
+
 
 DEGREE_LAT_IN_METERS = 10000000/90
 
@@ -30,12 +32,21 @@ class PpkTimestamp:
         easting_diff = float(self.easting.strip().split(',', maxsplit=1)[0])
         elevation_diff = float(self.elevation.strip().split(',', maxsplit=1)[0])
 
+        inf = False
+        sup = False
+
         # Find nearest Timestamp
         for idx, line in enumerate(pos_data_float):
-            if line[1] > self.time:
+            if float(line[1]) > self.time:
                 inf = pos_data_float[idx-1]
                 sup = pos_data_float[idx]
                 break
+
+        if type(inf) == bool or type(sup) == bool:
+            print("############################")
+            print(f"No timestamp for {self.ph4_base_file}_{file_index:0>4}.JPG")
+            return
+
         percent_diff_between_timestamps = (self.time - inf[1])/(sup[1]-inf[1])
         interpolated_lat = (
             inf[2]*(1-percent_diff_between_timestamps)+sup[2]*percent_diff_between_timestamps)
@@ -60,17 +71,35 @@ class PpkTimestamp:
 @dataclass
 class RinexToPpk:
     """Import calculated RINEX from PH4RTK with images date and find accurate PPK positions"""
-    pos_ph4_rinex_file: str
-    timestamp_file: str
+    data_dir: Path
     odm : bool
     delimiter : str
-    output_path : str
+    output_path : Path
+
+    def __post_init__(self):
+        if not self.data_dir.exists() :
+            print('self.data_dir does not exsits')
+            sys.exit()
+
+        if not list(self.data_dir.rglob('*Rinex.pos')):
+            print(f"Rinex.pos file not found in {self.data_dir}")
+            sys.exit()
+        self.pos_ph4_rinex_file = list(self.data_dir.rglob('*Rinex.pos'))[0]
+
+        if not list(self.data_dir.rglob('*_Timestamp.MRK')):
+            print(f"Timestamp.MRK file not found in {self.data_dir}")
+            sys.exit()
+
+        self.timestamp_file = list(self.data_dir.rglob('*_Timestamp.MRK'))[0]
+
+        # print(f'{self.pos_ph4_rinex_file=}\t{self.timestamp_file}')
+        # sys.exit()
 
     def calculate_ppk_positions(self):
         """Calculate position from ppk data"""
         #        __import__("IPython").embed()
         #        sys.exit()
-        with self.pos_ph4_rinex_file as rinex_file:
+        with self.pos_ph4_rinex_file.open(mode="r", encoding="utf-8")  as rinex_file:
 
             # skip headers
             tout = rinex_file.readlines()
@@ -86,15 +115,18 @@ class RinexToPpk:
         ph4_part_a,ph4_part_b,_ = basename(self.timestamp_file.name).split('_')
 
         ph4_base_file=f'{ph4_part_a}_{ph4_part_b}'
+        output_file= self.output_path.cwd() / f'{ph4_part_a}_{ph4_part_b}_PPK.csv'
         file_index = 1
-        with open(f'{self.output_path}/{ph4_part_a}_{ph4_part_b}_PPK.csv','w',encoding="UTF_8") as output_csv:
+
+        with output_file.open(mode="w", encoding="utf-8") as output_csv:
             self.odm and output_csv.write("EPSG:4326\n")
-            with self.timestamp_file as timestamp_file:
+            with self.timestamp_file.open(mode="r", encoding="utf-8")  as timestamp_file:
                 for line in timestamp_file:
                     index, time, day_number, northing, easting, elevation, _, _, _, _, _ = line.split('\t')
 
                     result = PpkTimestamp(index, float(time), northing, easting, elevation, ph4_base_file).calculate_values(pos_data_float, file_index)
-                    output_csv.write(result)
+                    if result :
+                        output_csv.write(result)
                     file_index = file_index+1
 
 
@@ -108,13 +140,9 @@ def parse_arguments():
         ''')
 
     parser.add_argument(
-        '--input_rinex', '-r', type=FileType('r'),
+        '--data_dir', '-r', type=str,
         metavar='PATH',required=True,
-        help="Rinex input file from RTKPOST.\n ex: 100_0138_Rinex.pos")
-
-    parser.add_argument('--input_timestamp', '-t', type=FileType('r'),
-        metavar='PATH',required=True,
-        help="Timestamp input file from PH4RTK Sdcard.\n ex: 100_0138_Timestamp.MRK")
+        help="Data input directory with RTKPOST data as 100_0138_Rinex.pos and 100_0138_Timestamp.MRK")
 
     parser.add_argument(
         '--delimiter', '-d', type=str, required=False, default=',',
@@ -123,7 +151,7 @@ def parse_arguments():
     parser.add_argument('--odm', action='store_true',
                     help='output with EPSG:4326 header for ODM')
 
-    parser.add_argument('--output_path','-o',  type=str, required=True,
+    parser.add_argument('--output_path','-o',  type=str, required=False,
                     help='output path to write PPK.csv data')
     # parser.add_argument(
     #     '--output', '-o', type=FileType('w'), default=sys.stdout,
@@ -143,8 +171,10 @@ def main():
     if len(args.delimiter) > 1 :
         print("Delimiter is just one char like ',' or ' '")
         sys.exit()
+    if not args.output_path :
+        args.output_path=args.data_dir
 
-    rinextoppk = RinexToPpk(args.input_rinex , args.input_timestamp,args.odm, args.delimiter,args.output_path)
+    rinextoppk = RinexToPpk(Path(args.data_dir),args.odm, args.delimiter,Path(args.output_path))
     rinextoppk.calculate_ppk_positions()
 
 
