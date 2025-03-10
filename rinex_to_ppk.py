@@ -64,8 +64,8 @@ class PpkTimestamp:
         new_lat = interpolated_lat + lat_diff_deg
         new_lon = interpolated_lon + lon_diff_deg
         new_alt = interpolated_alti - alti_diff
-        print(f'{self.ph4_base_file}_{file_index:0>4}.JPG\t{new_lat}\t{new_lon}\t{new_alt}')
-        return f'{self.ph4_base_file}_{file_index:0>4}.JPG\t{new_lat}\t{new_lon}\t{new_alt}\n'
+        print(f'{self.ph4_base_file}_{file_index:0>4}.JPG\t{new_lon}\t{new_lat}\t{new_alt}')
+        return f'{self.ph4_base_file}_{file_index:0>4}.JPG\t{new_lon}\t{new_lat}\t{new_alt}\n'
 
 
 @dataclass
